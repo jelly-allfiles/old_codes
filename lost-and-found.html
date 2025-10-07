@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lost & Found Manager</title>
+  <style>
+    :root {
+      --bg: #0f172a;        /* slate-900 */
+      --panel: #111827;     /* gray-900 */
+      --muted: #94a3b8;     /* slate-400 */
+      --text: #e5e7eb;      /* gray-200 */
+      --accent: #22c55e;    /* green-500 */
+      --accent-2: #60a5fa;  /* blue-400 */
+      --danger: #ef4444;    /* red-500 */
+      --warning: #f59e0b;   /* amber-500 */
+      --border: #1f2937;    /* gray-800 */
+      --chip-lost: #334155; /* slate-700 */
+      --chip-found: #14532d;/* green-900 */
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(180deg, var(--bg), #0b1223);
+      color: var(--text);
+    }
+    .container {
+      max-width: 1100px;
+      margin: 24px auto 48px;
+      padding: 0 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      overflow: hidden;
+    }
+    header.hero {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: radial-gradient(1200px 400px at 0% -20%, rgba(96,165,250,.08), transparent),
+                  radial-gradient(1000px 400px at 100% -40%, rgba(34,197,94,.08), transparent);
+    }
+    .hero h1 { margin: 0; font-size: 22px; letter-spacing: .3px; }
+
+
+    .toolbar {
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+    }
+    .toolbar input[type="search"], .toolbar select {
+      background: #0b1020; color: var(--text); border: 1px solid var(--border);
+      padding: 10px 12px; border-radius: 10px; outline: none; min-width: 220px;
+    }
+    .toolbar .btn {
+      border: 1px solid var(--border); background: #0a1222; color: var(--text);
+      padding: 10px 14px; border-radius: 10px; cursor: pointer; transition: .2s;
+    }
+    .toolbar .btn:hover { transform: translateY(-1px); border-color: #2b3648; }
+    .btn.primary { background: linear-gradient(90deg, #22c55e, #3b82f6); border: none; }
+
+    .content { padding: 16px 24px 24px; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left; font-weight: 600; font-size: 12px; letter-spacing: .4px;
+      color: var(--muted); padding: 12px 10px; border-bottom: 1px solid var(--border);
+    }
+    tbody td { padding: 14px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tbody tr:hover { background: #0b1222; }
+
+    .chip { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; }
+    .chip.lost { background: rgb(184, 30, 30); color: #e2e8f0; }
+    .chip.found { background: var(--chip-found); color: #bbf7d0; }
+
+    .muted { color: var(--muted); font-size: 12px; }
+
+    .actions { display: flex; gap: 8px; }
+    .iconbtn { cursor: pointer; border: 1px solid var(--border); background: #0a1222; padding: 8px 10px; border-radius: 10px; font-size: 12px; color: white; }
+    .iconbtn.edit { border-color: #24476b; color: white; }
+    .iconbtn.delete { border-color: #5b2323; color: white; }
+
+    /* Form */
+    .grid { display: grid; gap: 12px; }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .field input, .field select, .field textarea {
+      width: 100%; background: #0b1020; color: var(--text); border: 1px solid var(--border);
+      padding: 10px 12px; border-radius: 10px; outline: none;
+    }
+    .field textarea { min-height: 80px; resize: vertical; }
+    .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+
+    /* Drawer */
+    .drawer {
+      position: fixed; inset: 0; display: grid; place-items: end center; pointer-events: none;
+    }
+    .drawer .overlay { position: absolute; inset: 0; background: rgba(2,6,23,.55); opacity: 0; transition: .2s; }
+    .drawer .panel {
+      position: relative; width: min(720px, 92vw); background: var(--panel); border: 1px solid var(--border);
+      border-radius: 16px 16px 0 0; transform: translateY(12px); opacity: 0; transition: .25s;
+      pointer-events: auto; max-height: 92vh; overflow: auto;
+    }
+    .drawer.open .overlay { opacity: 1; }
+    .drawer.open .panel { transform: translateY(0); opacity: 1; }
+    .drawer header { padding: 16px 20px; border-bottom: 1px solid var(--border); display:flex; justify-content: space-between; align-items:center; }
+
+    /* Toast */
+    .toast {
+      position: fixed; right: 20px; bottom: 20px; background: #0b1020; color: var(--text);
+      border: 1px solid var(--border); padding: 12px 14px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      opacity: 0; transform: translateY(8px); transition: .2s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast .ok { color: var(--accent); }
+    .toast .err { color: var(--danger); }
+
+    @media (max-width: 700px) { .grid.cols-2 { grid-template-columns: 1fr; } }
+
+    #apiHint {
+  display: none;
+}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <header class="hero">
+        <div>
+          <h1>SSG Lost & Found Manager</h1>
+        </div>
+        <div class="toolbar">
+          <input id="search" type="search" placeholder="Search by item name or reporter…" />
+          <select id="statusFilter" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="lost">Lost</option>
+            <option value="found">Found</option>
+          </select>
+          <button id="refreshBtn" class="btn" title="Reload items">? Refresh</button>
+          <button id="addBtn" class="btn primary">? Add Item</button>
+        </div>
+      </header>
+      <div class="content">
+        <div class="muted" id="apiHint">API URL: <code id="apiUrlLabel">./lost-and-found.php</code></div>
+        <div style="overflow:auto; margin-top: 10px;">
+          <table id="itemsTable" role="table" aria-label="Lost and Found Items">
+            <thead>
+              <tr>
+                <th style="width:72px;">ID</th>
+                <th>Item</th>
+                <th>Description</th>
+                <th style="width:120px;">Status</th>
+                <th style="width:160px;">Reported By</th>
+                <th style="width:180px;">Date</th>
+                <th style="width:160px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr><td colspan="7" class="muted">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer: Create / Edit -->
+  <div class="drawer" id="drawer" aria-hidden="true">
+    <div class="overlay" id="overlay"></div>
+    <div class="panel">
+      <header>
+        <strong id="drawerTitle">Add Item</strong>
+        <button class="iconbtn" id="closeDrawer">Close ?</button>
+      </header>
+      <div class="content">
+        <form id="itemForm">
+          <input type="hidden" id="itemId" />
+          <div class="grid cols-2">
+            <div class="field">
+              <label for="item_name">Item Name *</label>
+              <input id="item_name" required placeholder="e.g., Black wallet" />
+            </div>
+            <div class="field">
+              <label for="status">Status *</label>
+              <select id="status" required>
+                <option value="">Select…</option>
+                <option value="lost">lost</option>
+                <option value="found">found</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="description">Description</label>
+            <textarea id="description" placeholder="Short details…"></textarea>
+          </div>
+          <div class="field">
+            <label for="reported_by">Reported By</label>
+            <input id="reported_by" placeholder="Your name (optional)" />
+          </div>
+          <div class="form-actions">
+            <button type="button" class="iconbtn" id="resetForm">Reset</button>
+            <button type="submit" class="iconbtn" id="saveBtn">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><span id="toastIcon">•</span> <span id="toastMsg">Ready.</span></div>
+
+  <script>
+    // === CONFIG ===
+    const API_URL = './lost-and-found.php'; // Adjust if your PHP file has a different path
+    document.getElementById('apiUrlLabel').textContent = API_URL;
+
+    // === Helpers ===
+    const qs = (sel, el=document) => el.querySelector(sel);
+    const qsa = (sel, el=document) => Array.from(el.querySelectorAll(sel));
+
+    const toast = (msg, type='ok') => {
+      const el = qs('#toast');
+      const icon = qs('#toastIcon');
+      el.classList.remove('show');
+      icon.className = type;
+      icon.textContent = type === 'ok' ? '?' : type === 'warn' ? '?' : '?';
+      qs('#toastMsg').textContent = msg;
+      requestAnimationFrame(() => { el.classList.add('show'); });
+      clearTimeout(el._t);
+      el._t = setTimeout(()=> el.classList.remove('show'), 2400);
+    };
+
+    const fmtDate = (s) => {
+      if (!s) return '—';
+      const d = new Date(s.replace(' ', 'T'));
+      if (isNaN(d)) return s;
+      return d.toLocaleString();
+    };
+
+    function chip(status) {
+      const cls = status === 'found' ? 'found' : 'lost';
+      return `<span class="chip ${cls}">${status}</span>`;
+    }
+
+    // Drawer controls
+    const drawer = qs('#drawer');
+    const openDrawer = () => { drawer.classList.add('open'); drawer.setAttribute('aria-hidden','false'); };
+    const closeDrawer = () => { drawer.classList.remove('open'); drawer.setAttribute('aria-hidden','true'); };
+    qs('#overlay').addEventListener('click', closeDrawer);
+    qs('#closeDrawer').addEventListener('click', closeDrawer);
+
+    // State
+    let items = [];
+
+    // Fetch items
+    async function loadItems() {
+      try {
+        qs('#tableBody').innerHTML = `<tr><td colspan="7" class="muted">Loading…</td></tr>`;
+        const res = await fetch(API_URL, { method: 'GET' });
+        const data = await res.json();
+        if (data.status !== 'success') throw new Error(data.message || 'Failed to load');
+        items = Array.isArray(data.data) ? data.data : [];
+        renderTable();
+        toast('Items loaded');
+      } catch (e) {
+        qs('#tableBody').innerHTML = `<tr><td colspan="7" class="muted">${e.message}</td></tr>`;
+        toast(e.message, 'err');
+      }
+    }
+
+    function renderTable() {
+      const term = qs('#search').value.trim().toLowerCase();
+      const status = qs('#statusFilter').value;
+      const filtered = items.filter(it => {
+        const matchTerm = !term || (it.item_name||'').toLowerCase().includes(term) || (it.reported_by||'').toLowerCase().includes(term);
+        const matchStatus = !status || (it.status === status);
+        return matchTerm && matchStatus;
+      });
+
+      const tbody = qs('#tableBody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="muted">No items found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(it => `
+        <tr>
+          <td>#${it.id}</td>
+          <td><strong>${escapeHtml(it.item_name)}</strong></td>
+          <td>${escapeHtml(it.description || '')}</td>
+          <td>${chip(it.status)}</td>
+          <td>${escapeHtml(it.reported_by || 'Anonymous')}</td>
+          <td><span class="muted">${fmtDate(it.date_reported)}</span></td>
+          <td class="actions">
+            <button class="iconbtn edit" data-act="edit" data-id="${it.id}">Edit</button>
+            <button class="iconbtn delete" data-act="delete" data-id="${it.id}">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function escapeHtml(str) {
+      return (str+"").replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#039;'}[c]));
+    }
+
+    // Table actions (edit/delete)
+    qs('#itemsTable').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const id = Number(btn.dataset.id);
+      const act = btn.dataset.act;
+      const item = items.find(x => x.id === id);
+      if (!item) return;
+
+      if (act === 'edit') {
+        // Fill form and open drawer
+        qs('#drawerTitle').textContent = 'Edit Item';
+        qs('#itemId').value = item.id;
+        qs('#item_name').value = item.item_name || '';
+        qs('#description').value = item.description || '';
+        qs('#status').value = item.status || '';
+        qs('#reported_by').value = item.reported_by || '';
+        openDrawer();
+      }
+
+      if (act === 'delete') {
+        if (!confirm(`Delete item #${id}? This cannot be undone.`)) return;
+        try {
+          const res = await fetch(API_URL, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+          });
+          const data = await res.json();
+          if (data.status !== 'success') throw new Error(data.message || 'Delete failed');
+          toast('Item deleted');
+          await loadItems();
+        } catch (err) {
+          toast(err.message, 'err');
+        }
+      }
+    });
+
+    // Toolbar
+    qs('#refreshBtn').addEventListener('click', loadItems);
+    qs('#addBtn').addEventListener('click', () => {
+      qs('#drawerTitle').textContent = 'Add Item';
+      qs('#itemForm').reset();
+      qs('#itemId').value = '';
+      openDrawer();
+    });
+    qs('#search').addEventListener('input', renderTable);
+    qs('#statusFilter').addEventListener('change', renderTable);
+
+    // Form submit
+    qs('#itemForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        item_name: qs('#item_name').value.trim(),
+        description: qs('#description').value.trim(),
+        status: qs('#status').value,
+        reported_by: qs('#reported_by').value.trim()
+      };
+
+      const id = Number(qs('#itemId').value || 0);
+      const isEdit = !!id;
+
+      if (!payload.item_name || !payload.status) {
+        toast('Please fill required fields', 'warn');
+        return;
+      }
+
+      try {
+        const res = await fetch(API_URL, {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(isEdit ? { id, ...payload } : payload)
+        });
+        const data = await res.json();
+        if (data.status !== 'success') throw new Error(data.message || 'Request failed');
+        toast(isEdit ? 'Item updated' : 'Item added');
+        closeDrawer();
+        await loadItems();
+      } catch (err) {
+        toast(err.message, 'err');
+      }
+    });
+
+    qs('#resetForm').addEventListener('click', () => qs('#itemForm').reset());
+
+    // Init
+    loadItems();
+  </script>
+</body>
+</html>

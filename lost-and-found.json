@@ -1,0 +1,26 @@
+[
+    {
+        "id": 1,
+        "item_name": "Wallet",
+        "description": "Black leather wallet",
+        "status": "lost",
+        "reported_by": "John",
+        "date_reported": "2025-09-02 17:00:00"
+    },
+    {
+        "id": 2,
+        "item_name": "Umbrella",
+        "description": "Blue umbrella",
+        "status": "found",
+        "reported_by": "Anna",
+        "date_reported": "2025-09-02 17:10:00"
+    },
+    {
+        "id": 3,
+        "item_name": "Umbrella",
+        "description": "Black umbrella",
+        "status": "lost",
+        "reported_by": "John",
+        "date_reported": "2025-09-02 12:45:03"
+    }
+]
